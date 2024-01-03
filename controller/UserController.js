@@ -2,6 +2,10 @@ const conn = require('../mariadb');
 const { StatusCodes } = require('http-status-codes');
 const { body, param, validationResult } = require('express-validator');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
+
+dotenv.config();
 
 // 최소 영문자 하나, 숫자 하나, 특수문자 하나 이상의 8자 16자 사이의 비밀번호
 const regex = /^(?=.*[a-zA-Z])(?=.*[!@#$%^*+=-])(?=.*[0-9]).{8,16}$/;
@@ -38,6 +42,7 @@ const validateName = body('name')
     .withMessage('문자열로 입력해주세요.');
 
 const validatesSignup = [validateEmail, validatePwd, validateName, validate];
+const validatesSignin = [validateEmail, validatePwd, validate];
 
 const signup = (req, res) => {
     const { email, name, password } = req.body;
@@ -50,13 +55,13 @@ const signup = (req, res) => {
 
     const values = [email, name, hashPwd, salt];
 
-    conn.query(sqlSelect, email, function (err, results) {
+    conn.query(sqlSelect, email, (err, results) => {
         if (results.length > 0) {
             res.status(StatusCodes.BAD_REQUEST).json({
                 message: '이미 존재하는 이메일입니다.',
             });
         } else {
-            conn.query(sqlInsert, values, function (err, results) {
+            conn.query(sqlInsert, values, (err, results) => {
                 if (results.affectedRows > 0) {
                     res.status(StatusCodes.CREATED).json({
                         message: '회원가입 성공',
@@ -72,8 +77,59 @@ const signup = (req, res) => {
 };
 
 const signin = (req, res) => {
-    res.json({
-        message: '로그인',
+    const { email, password } = req.body;
+    const sql = 'select * from users where email = ?';
+
+    conn.query(sql, email, (err, results) => {
+        if (err) {
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                message: err.message,
+            });
+        }
+
+        const signinUser = results[0];
+
+        if (!signinUser) {
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+                message: '해당하는 이메일이 존재하지 않습니다.',
+            });
+        }
+
+        try {
+            if (!signinUser.salt) throw new Error('salt가 없습니다.');
+
+            const hashedPassword = crypto.pbkdf2Sync(password, signinUser.salt, 10000, 10, 'sha512').toString('base64');
+
+            if (hashedPassword === signinUser.password) {
+                const token = jwt.sign(
+                    {
+                        email: signinUser.email,
+                    },
+                    process.env.PRIVATE_KEY,
+                    {
+                        expiresIn: '1h',
+                        issuer: 'minkyung',
+                    }
+                );
+                res.cookie('token', token, {
+                    httpOnly: true,
+                    secure: true,
+                    sameSite: 'none',
+                });
+                return res.status(StatusCodes.OK).json({
+                    message: '로그인 성공',
+                    token: token,
+                });
+            } else {
+                return res.status(StatusCodes.UNAUTHORIZED).json({
+                    message: '비밀번호가 일치하지 않습니다.',
+                });
+            }
+        } catch (err) {
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                message: err.message,
+            });
+        }
     });
 };
 
@@ -89,4 +145,4 @@ const pwdReset = (req, res) => {
     });
 };
 
-module.exports = { signup, signin, pwdResetRequest, pwdReset, validatesSignup };
+module.exports = { signup, signin, pwdResetRequest, pwdReset, validatesSignup, validatesSignin };

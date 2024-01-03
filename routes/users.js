@@ -1,7 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const conn = require('../mariadb');
-const { signup, signin, pwdResetRequest, pwdReset, validatesSignup } = require('../controller/UserController');
+const {
+    signup,
+    signin,
+    pwdResetRequest,
+    pwdReset,
+    validatesSignup,
+    validatesSignin,
+} = require('../controller/UserController');
 
 router.use(express.json());
 
@@ -9,7 +15,7 @@ router.use(express.json());
 router.post('/signup', validatesSignup, signup);
 
 // 로그인
-router.post('/signin', signin);
+router.post('/signin', validatesSignin, signin);
 
 router
     .route('/reset')
