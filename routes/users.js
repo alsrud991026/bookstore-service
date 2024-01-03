@@ -7,6 +7,7 @@ const {
     pwdReset,
     validatesSignup,
     validatesSignin,
+    validateEmail,
 } = require('../controller/UserController');
 
 router.use(express.json());
@@ -20,8 +21,8 @@ router.post('/signin', validatesSignin, signin);
 router
     .route('/reset')
     // 비밀번호 초기화 요청
-    .post(pwdResetRequest)
+    .post(validateEmail, pwdResetRequest)
     // 비밀번호 초기화
-    .put(pwdReset);
+    .put(validatesSignin, pwdReset);
 
 module.exports = router;
