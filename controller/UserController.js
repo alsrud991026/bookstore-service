@@ -56,12 +56,24 @@ const signup = (req, res) => {
     const values = [email, name, hashPwd, salt];
 
     conn.query(sqlSelect, email, (err, results) => {
+        if (err) {
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                message: '서버 에러',
+            });
+        }
+
         if (results.length > 0) {
             res.status(StatusCodes.BAD_REQUEST).json({
                 message: '이미 존재하는 이메일입니다.',
             });
         } else {
             conn.query(sqlInsert, values, (err, results) => {
+                if (err) {
+                    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                        message: '서버 에러',
+                    });
+                }
+
                 if (results.affectedRows > 0) {
                     res.status(StatusCodes.CREATED).json({
                         message: '회원가입 성공',
@@ -83,7 +95,7 @@ const signin = (req, res) => {
     conn.query(sql, email, (err, results) => {
         if (err) {
             return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-                message: err.message,
+                message: '서버 에러',
             });
         }
 
@@ -134,15 +146,39 @@ const signin = (req, res) => {
 };
 
 const pwdResetRequest = (req, res) => {
-    res.json({
-        message: '비밀번호 초기화 요청',
+    const { email } = req.body;
+    const sql = 'select * from users where email = ?';
+
+    conn.query(sql, email, (err, results) => {
+        if (err) {
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                message: '서버 에러',
+            });
+        }
+
+        const user = results[0];
+
+        if (!user) {
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+                message: '해당하는 이메일이 존재하지 않습니다.',
+            });
+        } else {
+            return res.status(StatusCodes.OK).json({
+                message: '이메일 발송 성공',
+                email: email,
+            });
+        }
     });
 };
 
-const pwdReset = (req, res) => {
-    res.json({
-        message: '비밀번호 초기화',
-    });
-};
+const pwdReset = (req, res) => {};
 
-module.exports = { signup, signin, pwdResetRequest, pwdReset, validatesSignup, validatesSignin };
+module.exports = {
+    signup,
+    signin,
+    pwdResetRequest,
+    pwdReset,
+    validatesSignup,
+    validatesSignin,
+    validateEmail,
+};
