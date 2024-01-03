@@ -108,8 +108,6 @@ const signin = (req, res) => {
         }
 
         try {
-            if (!signinUser.salt) throw new Error('salt가 없습니다.');
-
             const hashedPassword = crypto.pbkdf2Sync(password, signinUser.salt, 10000, 10, 'sha512').toString('base64');
 
             if (hashedPassword === signinUser.password) {
@@ -177,25 +175,50 @@ const pwdReset = (req, res) => {
     const salt = crypto.randomBytes(10).toString('base64');
     const hashPwd = crypto.pbkdf2Sync(password, salt, 10000, 10, 'sha512').toString('base64');
 
-    const sql = 'update users set password = ?, salt = ? where email = ?';
+    const sqlUpdate = 'update users set password = ?, salt = ? where email = ?';
+    const sqlSelect = 'select * from users where email = ?';
     const values = [hashPwd, salt, email];
 
-    conn.query(sql, values, (err, results) => {
+    conn.query(sqlSelect, email, (err, results) => {
         if (err) {
             return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
                 message: '서버 에러',
             });
         }
 
-        if (results.affectedRows > 0) {
-            res.status(StatusCodes.OK).json({
-                message: '비밀번호 초기화 성공',
-            });
-        } else {
-            res.status(StatusCodes.BAD_REQUEST).json({
-                message: '비밀번호 초기화 실패',
+        const user = results[0];
+
+        if (!user) {
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+                message: '해당하는 이메일이 존재하지 않습니다.',
             });
         }
+
+        const hashedNewPassword = crypto.pbkdf2Sync(password, user.salt, 10000, 10, 'sha512').toString('base64');
+
+        if (hashedNewPassword === user.password) {
+            return res.status(StatusCodes.BAD_REQUEST).json({
+                message: '새 비밀번호는 기존 비밀번호와 달라야 합니다.',
+            });
+        }
+
+        conn.query(sqlUpdate, values, (err, results) => {
+            if (err) {
+                return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                    message: '서버 에러',
+                });
+            }
+
+            if (results.affectedRows > 0) {
+                res.status(StatusCodes.OK).json({
+                    message: '비밀번호 초기화 성공',
+                });
+            } else {
+                res.status(StatusCodes.BAD_REQUEST).json({
+                    message: '비밀번호 초기화 실패',
+                });
+            }
+        });
     });
 };
 
