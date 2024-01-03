@@ -171,7 +171,33 @@ const pwdResetRequest = (req, res) => {
     });
 };
 
-const pwdReset = (req, res) => {};
+const pwdReset = (req, res) => {
+    const { email, password } = req.body;
+
+    const salt = crypto.randomBytes(10).toString('base64');
+    const hashPwd = crypto.pbkdf2Sync(password, salt, 10000, 10, 'sha512').toString('base64');
+
+    const sql = 'update users set password = ?, salt = ? where email = ?';
+    const values = [hashPwd, salt, email];
+
+    conn.query(sql, values, (err, results) => {
+        if (err) {
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                message: '서버 에러',
+            });
+        }
+
+        if (results.affectedRows > 0) {
+            res.status(StatusCodes.OK).json({
+                message: '비밀번호 초기화 성공',
+            });
+        } else {
+            res.status(StatusCodes.BAD_REQUEST).json({
+                message: '비밀번호 초기화 실패',
+            });
+        }
+    });
+};
 
 module.exports = {
     signup,
