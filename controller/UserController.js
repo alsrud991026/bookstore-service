@@ -139,7 +139,7 @@ const signin = (req, res) => {
             }
         } catch (err) {
             return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-                message: err.message,
+                message: '비밀번호 해싱 중 문제가 발생하였습니다.',
             });
         }
     });
