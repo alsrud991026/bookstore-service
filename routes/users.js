@@ -1,14 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const {
-    signup,
-    signin,
-    pwdResetRequest,
-    pwdReset,
-    validatesSignup,
-    validatesSignin,
-    validateEmail,
-} = require('../controller/UserController');
+const { signup, signin, pwdResetRequest, pwdReset } = require('../controller/UserController');
+
+const { validatesSignup, validatesSignin, validatesEmail } = require('../middleware/UserMiddleware');
 
 router.use(express.json());
 
@@ -201,7 +195,7 @@ router.post('/signin', validatesSignin, signin);
 router
     .route('/reset')
     // 비밀번호 초기화 요청
-    .post(validateEmail, pwdResetRequest)
+    .post(validatesEmail, pwdResetRequest)
     // 비밀번호 초기화
     .put(validatesSignin, pwdReset);
 
