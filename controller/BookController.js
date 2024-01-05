@@ -34,7 +34,7 @@ const bookDetail = (req, res) => {
     conn.query(sql, id, (err, results) => {
         if (err) {
             return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-                error: err.message,
+                error: '서버 에러',
             });
         }
 
