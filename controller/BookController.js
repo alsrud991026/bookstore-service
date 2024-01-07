@@ -23,13 +23,13 @@ const allBooks = (req, res) => {
 
     if (category_id && news) {
         sql +=
-            ' left join category on books.category_id = category.id where category_id = ? AND pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()';
-        values.push(category_id, news);
+            ' left join category on books.category_id = category.id where category_id = ? and pub_date between date_sub(now(), interval 1 month) and now()';
+        values.push(category_id);
     } else if (category_id) {
         sql += ' left join category on books.category_id = category.id where category_id = ?';
         values.push(category_id);
     } else if (news) {
-        sql += ' where pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()';
+        sql += ' where pub_date between date_sub(now(), interval 1 month) and now()';
         values.push(news);
     }
 
@@ -45,7 +45,7 @@ const allBooks = (req, res) => {
         }
 
         if (results.length === 0) {
-            const message = category_id ? '해당하는 카테고리의 도서가 없습니다.' : '도서가 없습니다.';
+            const message = category_id ? '해당하는 도서가 없습니다.' : '도서가 없습니다.';
             return res.status(StatusCodes.NOT_FOUND).json({
                 message: message,
             });
