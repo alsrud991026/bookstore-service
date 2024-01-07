@@ -2,14 +2,23 @@ const conn = require('../mariadb');
 const { StatusCodes } = require('http-status-codes');
 
 const allBooks = (req, res) => {
-    const { category_id } = req.query;
+    const { category_id, news } = req.query;
+    let values = [];
     let sql = 'select * from books';
 
-    if (category_id) {
+    if (category_id && news) {
+        sql +=
+            ' left join category on books.category_id = category.id where category_id = ? AND pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()';
+        values = [category_id, news];
+    } else if (category_id) {
         sql += ' left join category on books.category_id = category.id where category_id = ?';
+        values = [category_id];
+    } else if (news) {
+        sql += ' where pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()';
+        values = [news];
     }
 
-    conn.query(sql, category_id, (err, results) => {
+    conn.query(sql, values, (err, results) => {
         if (err) {
             return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
                 error: '서버 에러',
