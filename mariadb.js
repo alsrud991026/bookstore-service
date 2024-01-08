@@ -7,4 +7,15 @@ const pool = mysql.createPool({
     password: process.env.PASSWORD,
 });
 
-module.exports = pool;
+const getConnection = async () => {
+    try {
+        const connection = await pool.getConnection(async (conn) => conn);
+        return connection;
+    } catch (err) {
+        return err;
+    }
+};
+
+module.exports = {
+    getConnection,
+};
