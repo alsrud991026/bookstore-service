@@ -30,7 +30,6 @@ const allBooks = (req, res) => {
         values.push(category_id);
     } else if (news) {
         sql += ' where pub_date between date_sub(now(), interval 1 month) and now()';
-        values.push(news);
     }
 
     sql += ' limit ?, ?';
