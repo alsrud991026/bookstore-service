@@ -43,7 +43,7 @@ const allBooks = async (req, res) => {
     } catch (err) {
         console.log(err);
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            error: '도서 조회 중 에러가 발생하였습니다.',
+            message: '도서 조회 중 에러가 발생하였습니다.',
         });
     } finally {
         connection.release();
@@ -68,7 +68,7 @@ const bookDetail = async (req, res) => {
     } catch (err) {
         console.log(err);
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            error: '도서 조회 중 에러가 발생하였습니다.',
+            message: '도서 조회 중 에러가 발생하였습니다.',
         });
     } finally {
         connection.release();
