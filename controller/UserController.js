@@ -3,16 +3,11 @@ const { StatusCodes } = require('http-status-codes');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
-const getUserByEmail = async (email) => {
-    const connection = await conn.getConnection();
+const getUserByEmail = async (connection, email) => {
     const selectEmail = 'select * from users where email = ?';
 
-    try {
-        const [rows] = await connection.query(selectEmail, email);
-        return rows.length > 0 ? rows[0] : null;
-    } finally {
-        connection.release();
-    }
+    const [rows] = await connection.query(selectEmail, email);
+    return rows.length > 0 ? rows[0] : null;
 };
 
 const hashPassword = (password, salt) => {
@@ -37,7 +32,7 @@ const signup = async (req, res) => {
     const values = [email, name, hashedPwd, salt];
 
     try {
-        const existedEmail = await getUserByEmail(email);
+        const existedEmail = await getUserByEmail(connection, email);
         if (existedEmail) {
             return res.status(StatusCodes.BAD_REQUEST).json({
                 message: '이미 존재하는 이메일입니다.',
@@ -70,7 +65,7 @@ const signin = async (req, res) => {
     const connection = await conn.getConnection();
 
     try {
-        const existedEmail = await getUserByEmail(email);
+        const existedEmail = await getUserByEmail(connection, email);
 
         if (!existedEmail) {
             return res.status(StatusCodes.UNAUTHORIZED).json({
@@ -120,7 +115,7 @@ const pwdResetRequest = async (req, res) => {
     const connection = await conn.getConnection();
 
     try {
-        const existedEmail = await getUserByEmail(email);
+        const existedEmail = await getUserByEmail(connection, email);
 
         if (!existedEmail) {
             return res.status(StatusCodes.UNAUTHORIZED).json({
@@ -154,7 +149,7 @@ const pwdReset = async (req, res) => {
     const values = [hashedPwd, salt, email];
 
     try {
-        const existedEmail = await getUserByEmail(email);
+        const existedEmail = await getUserByEmail(connection, email);
 
         if (!existedEmail) {
             return res.status(StatusCodes.UNAUTHORIZED).json({
