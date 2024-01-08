@@ -3,119 +3,121 @@ const { StatusCodes } = require('http-status-codes');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
-const signup = (req, res) => {
+const getUserByEmail = async (connection, email) => {
+    const selectEmail = 'select * from users where email = ?';
+
+    const [rows] = await connection.query(selectEmail, email);
+    return rows.length > 0 ? rows[0] : null;
+};
+
+const hashPassword = (password, salt) => {
+    try {
+        return crypto.pbkdf2Sync(password, salt, 10000, 10, 'sha512').toString('base64');
+    } catch (err) {
+        console.log(err);
+        throw new Error('비밀번호 암호화 중 문제가 발생하였습니다.');
+    }
+};
+
+const signup = async (req, res) => {
+    const connection = await conn.getConnection();
+
     const { email, name, password } = req.body;
 
     const salt = crypto.randomBytes(10).toString('base64');
-    const hashPwd = crypto.pbkdf2Sync(password, salt, 10000, 10, 'sha512').toString('base64');
+    const hashedPwd = hashPassword(password, salt);
 
     const sqlInsert = 'insert into users (email, name, password, salt) values (?, ?, ?, ?)';
-    const sqlSelect = `select * from users where email = ?`;
 
-    const values = [email, name, hashPwd, salt];
+    const values = [email, name, hashedPwd, salt];
 
-    conn.query(sqlSelect, email, (err, results) => {
-        if (err) {
-            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-                message: '서버 에러',
-            });
-        }
-
-        if (results.length > 0) {
-            res.status(StatusCodes.BAD_REQUEST).json({
+    try {
+        const existedEmail = await getUserByEmail(connection, email);
+        if (existedEmail) {
+            return res.status(StatusCodes.BAD_REQUEST).json({
                 message: '이미 존재하는 이메일입니다.',
             });
-        } else {
-            conn.query(sqlInsert, values, (err, results) => {
-                if (err) {
-                    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-                        message: '서버 에러',
-                    });
-                }
+        }
 
-                if (results.affectedRows > 0) {
-                    res.status(StatusCodes.CREATED).json({
-                        message: '회원가입 성공',
-                    });
-                } else {
-                    res.status(StatusCodes.BAD_REQUEST).json({
-                        message: '회원가입 실패',
-                    });
-                }
+        const [rows] = await connection.query(sqlInsert, values);
+
+        if (rows.affectedRows > 0) {
+            res.status(StatusCodes.CREATED).json({
+                message: '회원가입 성공',
+            });
+        } else {
+            res.status(StatusCodes.BAD_REQUEST).json({
+                message: '회원가입 실패',
             });
         }
-    });
+    } catch (err) {
+        console.log(err);
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: '회원가입 중 문제가 발생하였습니다.',
+        });
+    } finally {
+        connection.release();
+    }
 };
 
-const signin = (req, res) => {
+const signin = async (req, res) => {
     const { email, password } = req.body;
-    const sql = 'select * from users where email = ?';
+    const connection = await conn.getConnection();
 
-    conn.query(sql, email, (err, results) => {
-        if (err) {
-            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-                message: '서버 에러',
-            });
-        }
+    try {
+        const existedEmail = await getUserByEmail(connection, email);
 
-        const signinUser = results[0];
-
-        if (!signinUser) {
+        if (!existedEmail) {
             return res.status(StatusCodes.UNAUTHORIZED).json({
                 message: '해당하는 이메일이 존재하지 않습니다.',
             });
         }
 
-        try {
-            const hashedPassword = crypto.pbkdf2Sync(password, signinUser.salt, 10000, 10, 'sha512').toString('base64');
+        const hashedPwd = hashPassword(password, existedEmail.salt);
 
-            if (hashedPassword === signinUser.password) {
-                const token = jwt.sign(
-                    {
-                        email: signinUser.email,
-                    },
-                    process.env.PRIVATE_KEY,
-                    {
-                        expiresIn: '1h',
-                        issuer: 'minkyung',
-                    }
-                );
-                res.cookie('token', token, {
-                    httpOnly: true,
-                    secure: true,
-                    sameSite: 'none',
-                });
-                return res.status(StatusCodes.OK).json({
-                    message: '로그인 성공',
-                    token: token,
-                });
-            } else {
-                return res.status(StatusCodes.UNAUTHORIZED).json({
-                    message: '비밀번호가 일치하지 않습니다.',
-                });
-            }
-        } catch (err) {
-            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-                message: '비밀번호 해싱 중 문제가 발생하였습니다.',
+        if (hashedPwd === existedEmail.password) {
+            const token = jwt.sign(
+                {
+                    email: existedEmail.email,
+                },
+                process.env.TOKEN_PRIVATE_KEY,
+                {
+                    expiresIn: '1h',
+                    issuer: process.env.TOKEN_ISSUER,
+                }
+            );
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'none',
+            });
+            return res.status(StatusCodes.OK).json({
+                message: '로그인 성공',
+                token: token,
+            });
+        } else {
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+                message: '비밀번호가 일치하지 않습니다.',
             });
         }
-    });
+    } catch (err) {
+        console.log(err);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: '로그인 중 문제가 발생하였습니다.',
+        });
+    } finally {
+        connection.release();
+    }
 };
 
-const pwdResetRequest = (req, res) => {
+const pwdResetRequest = async (req, res) => {
     const { email } = req.body;
-    const sql = 'select * from users where email = ?';
+    const connection = await conn.getConnection();
 
-    conn.query(sql, email, (err, results) => {
-        if (err) {
-            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-                message: '서버 에러',
-            });
-        }
+    try {
+        const existedEmail = await getUserByEmail(connection, email);
 
-        const user = results[0];
-
-        if (!user) {
+        if (!existedEmail) {
             return res.status(StatusCodes.UNAUTHORIZED).json({
                 message: '해당하는 이메일이 존재하지 않습니다.',
             });
@@ -125,60 +127,63 @@ const pwdResetRequest = (req, res) => {
                 email: email,
             });
         }
-    });
+    } catch (err) {
+        console.log(err);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: '이메일 발송 중 문제가 발생하였습니다.',
+        });
+    } finally {
+        connection.release();
+    }
 };
 
-const pwdReset = (req, res) => {
+const pwdReset = async (req, res) => {
+    const connection = await conn.getConnection();
     const { email, password } = req.body;
 
     const salt = crypto.randomBytes(10).toString('base64');
-    const hashPwd = crypto.pbkdf2Sync(password, salt, 10000, 10, 'sha512').toString('base64');
+    const hashedPwd = hashPassword(password, salt);
 
     const sqlUpdate = 'update users set password = ?, salt = ? where email = ?';
-    const sqlSelect = 'select * from users where email = ?';
-    const values = [hashPwd, salt, email];
 
-    conn.query(sqlSelect, email, (err, results) => {
-        if (err) {
-            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-                message: '서버 에러',
-            });
-        }
+    const values = [hashedPwd, salt, email];
 
-        const user = results[0];
+    try {
+        const existedEmail = await getUserByEmail(connection, email);
 
-        if (!user) {
+        if (!existedEmail) {
             return res.status(StatusCodes.UNAUTHORIZED).json({
                 message: '해당하는 이메일이 존재하지 않습니다.',
             });
         }
 
-        const hashedNewPassword = crypto.pbkdf2Sync(password, user.salt, 10000, 10, 'sha512').toString('base64');
+        const hashedNewPassword = hashPassword(password, existedEmail.salt);
 
-        if (hashedNewPassword === user.password) {
+        if (hashedNewPassword === existedEmail.password) {
             return res.status(StatusCodes.BAD_REQUEST).json({
                 message: '새 비밀번호는 기존 비밀번호와 달라야 합니다.',
             });
         }
 
-        conn.query(sqlUpdate, values, (err, results) => {
-            if (err) {
-                return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-                    message: '서버 에러',
-                });
-            }
+        const [rows] = await connection.query(sqlUpdate, values);
 
-            if (results.affectedRows > 0) {
-                res.status(StatusCodes.OK).json({
-                    message: '비밀번호 초기화 성공',
-                });
-            } else {
-                res.status(StatusCodes.BAD_REQUEST).json({
-                    message: '비밀번호 초기화 실패',
-                });
-            }
+        if (rows.affectedRows > 0) {
+            res.status(StatusCodes.OK).json({
+                message: '비밀번호 초기화 성공',
+            });
+        } else {
+            res.status(StatusCodes.BAD_REQUEST).json({
+                message: '비밀번호 초기화 실패',
+            });
+        }
+    } catch (err) {
+        console.log(err);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: '비밀번호 초기화 중 문제가 발생하였습니다.',
         });
-    });
+    } finally {
+        connection.release();
+    }
 };
 
 module.exports = {

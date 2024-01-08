@@ -1,7 +1,8 @@
 const conn = require('../mariadb');
 const { StatusCodes } = require('http-status-codes');
 
-const allBooks = (req, res) => {
+const allBooks = async (req, res) => {
+    const connection = await conn.getConnection();
     const { category_id, news, limit, current_page } = req.query;
     // limit : 페이지 당 도서 수
     // currentPage : 현재 페이지
@@ -9,13 +10,6 @@ const allBooks = (req, res) => {
 
     const parsedLimit = parseInt(limit);
     const parsedCurrentPage = parseInt(current_page);
-
-    if (!parsedLimit || !parsedCurrentPage || parsedLimit < 1 || parsedCurrentPage < 1) {
-        return res.status(StatusCodes.BAD_REQUEST).json({
-            error: 'limit 혹은 currentPage가 잘못되었습니다.',
-        });
-    }
-
     const offset = parsedLimit * (parsedCurrentPage - 1);
     const values = [];
 
@@ -35,44 +29,50 @@ const allBooks = (req, res) => {
     sql += ' limit ?, ?';
     values.push(offset, parsedLimit);
 
-    conn.query(sql, values, (err, results) => {
-        if (err) {
-            console.log(err);
-            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-                error: '서버 에러',
-            });
-        }
+    try {
+        const [rows] = await connection.query(sql, values);
 
-        if (results.length === 0) {
+        if (rows.length === 0) {
             const message = category_id ? '해당하는 도서가 없습니다.' : '도서가 없습니다.';
             return res.status(StatusCodes.NOT_FOUND).json({
                 message: message,
             });
         }
 
-        return res.status(StatusCodes.OK).json(results);
-    });
+        return res.status(StatusCodes.OK).json(rows);
+    } catch (err) {
+        console.log(err);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: '도서 조회 중 에러가 발생하였습니다.',
+        });
+    } finally {
+        connection.release();
+    }
 };
 
-const bookDetail = (req, res) => {
+const bookDetail = async (req, res) => {
+    const connection = await conn.getConnection();
     const { id } = req.params;
     const sql = 'select * from books left join category on books.category_id = category.id where books.id = ?';
 
-    conn.query(sql, id, (err, results) => {
-        if (err) {
-            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-                error: '서버 에러',
-            });
-        }
+    try {
+        const [rows] = await connection.query(sql, id);
 
-        if (results.length === 0) {
+        if (rows.length === 0) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 message: '해당하는 도서가 없습니다.',
             });
         }
 
-        return res.status(StatusCodes.OK).json(results[0]);
-    });
+        return res.status(StatusCodes.OK).json(rows[0]);
+    } catch (err) {
+        console.log(err);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: '도서 조회 중 에러가 발생하였습니다.',
+        });
+    } finally {
+        connection.release();
+    }
 };
 
 module.exports = {
