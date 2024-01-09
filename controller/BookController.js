@@ -13,14 +13,14 @@ const allBooks = async (req, res) => {
     const offset = parsedLimit * (parsedCurrentPage - 1);
     const values = [];
 
-    let sql = 'select * from books';
+    let sql = 'select *, (select count(*) from likes where books.id=liked_book_id) as likes from books';
 
     if (category_id && news) {
         sql +=
-            ' left join category on books.category_id = category.id where category_id = ? and pub_date between date_sub(now(), interval 1 month) and now()';
+            ' left join category on books.category_id = category.category_id where books.category_id = ? and pub_date between date_sub(now(), interval 1 month) and now()';
         values.push(category_id);
     } else if (category_id) {
-        sql += ' left join category on books.category_id = category.id where category_id = ?';
+        sql += ' left join category on books.category_id = category.category_id where books.category_id = ?';
         values.push(category_id);
     } else if (news) {
         sql += ' where pub_date between date_sub(now(), interval 1 month) and now()';
@@ -52,11 +52,14 @@ const allBooks = async (req, res) => {
 
 const bookDetail = async (req, res) => {
     const connection = await conn.getConnection();
-    const { id } = req.params;
-    const sql = 'select * from books left join category on books.category_id = category.id where books.id = ?';
-
+    const { user_id } = req.body;
+    const book_id = req.params.id;
+    const sql = `select *, (select count(*) from likes where books.id=liked_book_id) as likes,
+        (select exists(select * from likes where liked_book_id=? and user_id=?)) as liked from books
+        left join category on books.category_id = category.category_id where books.id=?`;
+    const values = [book_id, user_id, book_id];
     try {
-        const [rows] = await connection.query(sql, id);
+        const [rows] = await connection.query(sql, values);
 
         if (rows.length === 0) {
             return res.status(StatusCodes.NOT_FOUND).json({
