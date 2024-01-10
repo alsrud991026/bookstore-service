@@ -12,6 +12,7 @@
         "dev": "nodemon ./app.js"
     },
     "devDependencies": {
+        "camelcase-keys": "^5.2.0",
         "swagger-jsdoc": "^6.2.8",
         "swagger-ui-express": "^5.0.0"
     }

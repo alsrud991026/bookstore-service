@@ -1,17 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { body, param, validationResult } = require('express-validator');
+const { addToCart } = require('../controller/CartController');
 
 router.use(express.json());
 
 // 장바구니 담기
 router
     .route('/')
-    .post((req, res) => {
-        res.json({
-            message: '장바구니 담기',
-        });
-    })
+    .post(addToCart)
     // 장바구니 조회
     .get((req, res) => {
         res.json({
