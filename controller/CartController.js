@@ -65,6 +65,43 @@ const addToCart = async (req, res) => {
     }
 };
 
+const getCartItems = async (req, res) => {
+    const connection = await conn.getConnection();
+    const { userId } = camelcaseKeys(req.body);
+
+    const sqlSelectUser = 'select * from users where id = ?';
+    const sqlSelectCart = `select cartItems.id, book_id, title, summary, quantity, price
+    from cartItems left join books on cartItems.book_id = books.id where user_id = ?`;
+
+    try {
+        const [rowsUser] = await connection.query(sqlSelectUser, userId);
+
+        if (rowsUser.length === 0) {
+            return res.status(StatusCodes.NOT_FOUND).json({
+                message: '존재하지 않는 유저입니다.',
+            });
+        }
+
+        const [rowsSelect] = await connection.query(sqlSelectCart, userId);
+
+        if (rowsSelect.length > 0) {
+            return res.status(StatusCodes.OK).json(rowsSelect);
+        } else {
+            return res.status(StatusCodes.NOT_FOUND).json({
+                message: '장바구니에 담긴 도서가 없습니다.',
+            });
+        }
+    } catch (err) {
+        console.log(err);
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: '장바구니 조회 중 문제가 발생하였습니다.',
+        });
+    } finally {
+        connection.release();
+    }
+};
+
 module.exports = {
     addToCart,
+    getCartItems,
 };
