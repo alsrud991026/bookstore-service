@@ -101,7 +101,36 @@ const getCartItems = async (req, res) => {
     }
 };
 
+const deleteCartItem = async (req, res) => {
+    const connection = await conn.getConnection();
+    const { id } = req.params;
+
+    const sqlDeleteCart = 'delete from cartItems where id = ?';
+
+    try {
+        const [rowsDelete] = await connection.query(sqlDeleteCart, id);
+
+        if (rowsDelete.affectedRows > 0) {
+            return res.status(StatusCodes.OK).json({
+                message: '장바구니에서 도서가 삭제되었습니다.',
+            });
+        } else {
+            return res.status(StatusCodes.NOT_FOUND).json({
+                message: '존재하지 않는 장바구니 도서입니다.',
+            });
+        }
+    } catch (err) {
+        console.log(err);
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: '장바구니 도서 삭제 중 문제가 발생하였습니다.',
+        });
+    } finally {
+        connection.release();
+    }
+};
+
 module.exports = {
     addToCart,
     getCartItems,
+    deleteCartItem,
 };
