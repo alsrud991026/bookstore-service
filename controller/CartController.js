@@ -18,6 +18,7 @@ const addToCart = async (req, res) => {
 
     const sqlInsertCart = 'insert into cartItems (book_id, quantity, user_id) values (?, ?, ?)';
     const sqlSelectCart = 'select * from cartItems where user_id = ? and book_id = ?';
+    const sqlUpdateCart = 'update cartItems set quantity = quantity + ? where user_id = ? and book_id = ?';
     const values = [bookId, quantity, userId];
     const existValues = [userId, bookId];
 
@@ -39,9 +40,18 @@ const addToCart = async (req, res) => {
         const [rowsSelect] = await connection.query(sqlSelectCart, existValues);
 
         if (rowsSelect.length > 0) {
-            return res.status(StatusCodes.BAD_REQUEST).json({
-                message: '이미 장바구니에 담긴 도서입니다.',
-            });
+            const [rowsUpdate] = await connection.query(sqlUpdateCart, [quantity, userId, bookId]);
+
+            if (rowsUpdate.affectedRows > 0) {
+                return res.status(StatusCodes.OK).json({
+                    message:
+                        '이미 장바구니에 담긴 도서입니다. 원하시는 수량만큼 장바구니에 담긴 도서의 수량이 증가하였습니다.',
+                });
+            } else {
+                return res.status(StatusCodes.BAD_REQUEST).json({
+                    message: '장바구니 추가에 실패하였습니다.',
+                });
+            }
         }
 
         const [rowsInsert] = await connection.query(sqlInsertCart, values);
