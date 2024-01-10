@@ -77,11 +77,24 @@ const addToCart = async (req, res) => {
 
 const getCartItems = async (req, res) => {
     const connection = await conn.getConnection();
-    const { userId } = camelcaseKeys(req.body);
+    const { userId, selected } = camelcaseKeys(req.body);
 
     const sqlSelectUser = 'select * from users where id = ?';
-    const sqlSelectCart = `select cartItems.id, book_id, title, summary, quantity, price
+    const sqlSelectAllCart = `select cartItems.id, book_id, title, summary, quantity, price
     from cartItems left join books on cartItems.book_id = books.id where user_id = ?`;
+    const sqlSelectSelectedCart = `select cartItems.id, book_id, title, summary, quantity, price
+    from cartItems left join books on cartItems.book_id = books.id where user_id = ? and cartItems.id in (?)`;
+
+    let sqlSelectCart;
+    let values;
+
+    if (selected) {
+        sqlSelectCart = sqlSelectSelectedCart;
+        values = [userId, selected];
+    } else {
+        sqlSelectCart = sqlSelectAllCart;
+        values = [userId];
+    }
 
     try {
         const [rowsUser] = await connection.query(sqlSelectUser, userId);
@@ -92,7 +105,7 @@ const getCartItems = async (req, res) => {
             });
         }
 
-        const [rowsSelect] = await connection.query(sqlSelectCart, userId);
+        const [rowsSelect] = await connection.query(sqlSelectCart, values);
 
         if (rowsSelect.length > 0) {
             return res.status(StatusCodes.OK).json(rowsSelect);
