@@ -1,29 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const { body, param, validationResult } = require('express-validator');
+const { order, getOrders, getOrderDetail, deleteOrder } = require('../controller/OrderController');
 
 router.use(express.json());
 
-// 주문하기
 router
     .route('/')
-    .post((req, res) => {
-        res.json({
-            message: '주문하기',
-        });
-    })
+    // 주문하기
+    .post(order)
     // 주문 목록 조회
-    .get((req, res) => {
-        res.json({
-            message: '주문 목록 조회',
-        });
-    });
+    .get(getOrders);
 
 // 주문 상세 상품 조회
-router.get('/:id', (req, res) => {
-    res.json({
-        message: '주문 상세 상품 조회',
-    });
-});
+router
+    .route('/:id')
+    // 주문 상세 상품 조회
+    .get(getOrderDetail)
+    // 주문 취소
+    .delete(deleteOrder);
 
 module.exports = router;
