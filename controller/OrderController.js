@@ -90,7 +90,39 @@ const getOrderDetail = async (req, res) => {
 };
 
 const deleteOrder = async (req, res) => {
-    console.log('deleteOrder');
+    const connection = await conn.getConnection();
+    const orderId = req.params.id;
+    const sqlSelectOrder = `select * from orders where id=?`;
+    const sqlDeleteOrderedBook = `delete from orderedBook where order_id=?`;
+    const sqlDeleteOrder = `delete from orders where id=?`;
+    const sqlDeleteDelivery = `delete from delivery where id=?`;
+
+    try {
+        const [rowsOrder] = await connection.query(sqlSelectOrder, orderId);
+        if (rowsOrder.length === 0) {
+            return res.status(StatusCodes.NOT_FOUND).json({
+                message: '주문 내역이 존재하지 않습니다.',
+            });
+        }
+
+        await connection.query(sqlDeleteOrderedBook, orderId);
+
+        const deliveryId = rowsOrder[0].delivery_id;
+
+        await connection.query(sqlDeleteOrder, orderId);
+        await connection.query(sqlDeleteDelivery, deliveryId);
+
+        return res.status(StatusCodes.OK).json({
+            message: '주문이 성공적으로 삭제되었습니다.',
+        });
+    } catch (err) {
+        console.log(err);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: '주문 삭제 중 에러가 발생하였습니다.',
+        });
+    } finally {
+        connection.release();
+    }
 };
 
 module.exports = {
