@@ -37,7 +37,29 @@ const order = async (req, res) => {
 };
 
 const getOrders = async (req, res) => {
-    console.log('getOrders');
+    const connection = await conn.getConnection();
+    const { userId } = camelcaseKeys(req.body);
+    const sql = `select * from orders where user_id=?`;
+    const values = [userId];
+
+    try {
+        const [rows] = await connection.query(sql, values);
+
+        if (rows.length === 0) {
+            return res.status(StatusCodes.NOT_FOUND).json({
+                message: '주문 내역이 없습니다.',
+            });
+        }
+
+        return res.status(StatusCodes.OK).json(rows);
+    } catch (err) {
+        console.log(err);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: '주문 내역 조회 중 에러가 발생하였습니다.',
+        });
+    } finally {
+        connection.release();
+    }
 };
 
 const getOrderDetail = async (req, res) => {
