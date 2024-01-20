@@ -88,6 +88,7 @@ const signin = async (req, res) => {
         if (isPasswordValid) {
             const token = jwt.sign(
                 {
+                    id: existedEmail.id,
                     email: existedEmail.email,
                 },
                 process.env.TOKEN_PRIVATE_KEY,
