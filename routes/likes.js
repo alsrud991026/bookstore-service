@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { addLike, deleteLike } = require('../controller/likeController');
 const { validatesLike } = require('../middleware/likeValidator');
+const verifyToken = require('../middleware/ensureAuthorization');
 
 router.use(express.json());
 
@@ -102,8 +103,8 @@ router.use(express.json());
 router
     .route('/:id')
     // 좋아요 추가
-    .post(validatesLike, addLike)
+    .post(verifyToken, validatesLike, addLike)
     // 좋아요 취소
-    .delete(validatesLike, deleteLike);
+    .delete(verifyToken, validatesLike, deleteLike);
 
 module.exports = router;

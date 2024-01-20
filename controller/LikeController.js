@@ -15,21 +15,15 @@ const checkExistValues = async (connection, values) => {
 };
 
 const addLike = async (req, res) => {
-    const { id } = req.params;
-    const { userId } = camelcaseKeys(req.body);
+    const bookId = req.params.id;
+    const userId = req.userId;
     const sqlInsert = `insert into likes (user_id, liked_book_id) values (?, ?)`;
-    const values = [userId, id];
+    const values = [userId, bookId];
 
     const connection = await conn.getConnection();
 
     try {
-        const { userExists, bookExists } = await checkExistValues(connection, values);
-
-        if (!userExists) {
-            return res.status(StatusCodes.NOT_FOUND).json({
-                message: '존재하지 않는 유저입니다.',
-            });
-        }
+        const { bookExists } = await checkExistValues(connection, values);
 
         if (!bookExists) {
             return res.status(StatusCodes.NOT_FOUND).json({
@@ -67,10 +61,10 @@ const addLike = async (req, res) => {
 };
 
 const deleteLike = async (req, res) => {
-    const { id } = req.params;
-    const { userId } = camelcaseKeys(req.body);
+    const bookId = req.params.id;
+    const userId = req.userId;
     const sqlDelete = `delete from likes where user_id = ? and liked_book_id = ?`;
-    const values = [userId, id];
+    const values = [userId, bookId];
 
     const connection = await conn.getConnection();
 

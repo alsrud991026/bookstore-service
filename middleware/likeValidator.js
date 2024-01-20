@@ -1,4 +1,4 @@
-const { param, body, validationResult } = require('express-validator');
+const { param, validationResult } = require('express-validator');
 
 const validate = (req, res, next) => {
     const err = validationResult(req);
@@ -17,13 +17,6 @@ const validateLikedBookId = param('id')
     .isInt()
     .withMessage('숫자로 입력해주세요.');
 
-const validateUserId = body('user_id')
-    .trim()
-    .notEmpty()
-    .withMessage('유저 아이디를 입력해주세요.')
-    .isInt()
-    .withMessage('숫자로 입력해주세요.');
-
-const validatesLike = [validateLikedBookId, validateUserId, validate];
+const validatesLike = [validateLikedBookId, validate];
 
 module.exports = { validatesLike };
