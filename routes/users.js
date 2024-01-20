@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { signup, signin, pwdResetRequest, pwdReset } = require('../controller/UserController');
+const { signup, signin, pwdResetRequest, pwdReset } = require('../controller/userController');
 
-const { validatesSignup, validatesSignin, validatesEmail } = require('../middleware/UserMiddleware');
+const { validatesSignup, validatesSignin, validatesEmail } = require('../middleware/userValidator');
 
 router.use(express.json());
 

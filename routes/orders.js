@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { order, getOrders, getOrderDetail, deleteOrder } = require('../controller/OrderController');
+const { order, getOrders, getOrderDetail, deleteOrder } = require('../controller/orderController');
 
 router.use(express.json());
 

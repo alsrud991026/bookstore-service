@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { addToCart, getCartItems, deleteCartItem } = require('../controller/CartController');
-const { validatesAddToCart, validatesGetCartItems } = require('../middleware/CartMiddleware');
+const { addToCart, getCartItems, deleteCartItem } = require('../controller/cartController');
+const { validatesAddToCart, validatesGetCartItems } = require('../middleware/cartValidator');
 
 router.use(express.json());
 /**
