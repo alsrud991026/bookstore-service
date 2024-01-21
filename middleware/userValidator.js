@@ -1,4 +1,4 @@
-const { body, param, validationResult } = require('express-validator');
+const { body, validationResult } = require('express-validator');
 const { StatusCodes } = require('http-status-codes');
 
 // 최소 영문자 하나, 숫자 하나, 특수문자 하나 이상의 8자 16자 사이의 비밀번호

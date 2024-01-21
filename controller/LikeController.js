@@ -1,6 +1,5 @@
 const conn = require('../mariadb');
 const { StatusCodes } = require('http-status-codes');
-const camelcaseKeys = require('camelcase-keys');
 
 const sqlSelect = `select * from likes where user_id = ? and liked_book_id = ?`;
 

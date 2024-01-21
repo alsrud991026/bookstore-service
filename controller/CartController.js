@@ -1,7 +1,6 @@
 const camelcaseKeys = require('camelcase-keys');
 const conn = require('../mariadb');
 const { StatusCodes } = require('http-status-codes');
-const verifyToken = require('../middleware/ensureAuthorization');
 
 const checkExist = `select (select count(*) from users where id = ?) as user_exists, (select count(*) from books where id = ?) as book_exists`;
 
