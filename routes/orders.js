@@ -1,22 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const { order, getOrders, getOrderDetail, deleteOrder } = require('../controller/orderController');
+const verifyToken = require('../middleware/ensureAuthorization');
 
 router.use(express.json());
 
 router
     .route('/')
     // 주문하기
-    .post(order)
+    .post(verifyToken, order)
     // 주문 목록 조회
-    .get(getOrders);
+    .get(verifyToken, getOrders);
 
 // 주문 상세 상품 조회
 router
     .route('/:id')
     // 주문 상세 상품 조회
-    .get(getOrderDetail)
+    .get(verifyToken, getOrderDetail)
     // 주문 취소
-    .delete(deleteOrder);
+    .delete(verifyToken, deleteOrder);
 
 module.exports = router;
