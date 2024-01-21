@@ -1,6 +1,7 @@
 const camelcaseKeys = require('camelcase-keys');
 const conn = require('../mariadb');
 const { StatusCodes } = require('http-status-codes');
+const verifyToken = require('../middleware/ensureAuthorization');
 
 const checkExist = `select (select count(*) from users where id = ?) as user_exists, (select count(*) from books where id = ?) as book_exists`;
 
@@ -14,7 +15,8 @@ const checkExistValues = async (connection, values) => {
 
 const addToCart = async (req, res) => {
     const connection = await conn.getConnection();
-    const { bookId, quantity, userId } = camelcaseKeys(req.body);
+    const { bookId, quantity } = camelcaseKeys(req.body);
+    const userId = req.userId;
 
     const sqlInsertCart = 'insert into cartItems (book_id, quantity, user_id) values (?, ?, ?)';
     const sqlSelectCart = 'select * from cartItems where user_id = ? and book_id = ?';
@@ -23,13 +25,7 @@ const addToCart = async (req, res) => {
     const existValues = [userId, bookId];
 
     try {
-        const { user_exists, book_exists } = await checkExistValues(connection, existValues);
-
-        if (!user_exists) {
-            return res.status(StatusCodes.NOT_FOUND).json({
-                message: '존재하지 않는 유저입니다.',
-            });
-        }
+        const { book_exists } = await checkExistValues(connection, existValues);
 
         if (!book_exists) {
             return res.status(StatusCodes.NOT_FOUND).json({
@@ -77,9 +73,9 @@ const addToCart = async (req, res) => {
 
 const getCartItems = async (req, res) => {
     const connection = await conn.getConnection();
-    const { userId, selected } = camelcaseKeys(req.body);
+    const userId = req.userId;
+    const { selected } = camelcaseKeys(req.body);
 
-    const sqlSelectUser = 'select * from users where id = ?';
     const sqlSelectAllCart = `select cartItems.id, book_id, title, summary, quantity, price
     from cartItems left join books on cartItems.book_id = books.id where user_id = ?`;
     const sqlSelectSelectedCart = `select cartItems.id, book_id, title, summary, quantity, price
@@ -97,14 +93,6 @@ const getCartItems = async (req, res) => {
     }
 
     try {
-        const [rowsUser] = await connection.query(sqlSelectUser, userId);
-
-        if (rowsUser.length === 0) {
-            return res.status(StatusCodes.NOT_FOUND).json({
-                message: '존재하지 않는 유저입니다.',
-            });
-        }
-
         const [rowsSelect] = await connection.query(sqlSelectCart, values);
 
         if (rowsSelect.length > 0) {

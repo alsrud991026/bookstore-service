@@ -10,13 +10,6 @@ const validate = (req, res, next) => {
     }
 };
 
-const validateUserId = body('user_id')
-    .trim()
-    .notEmpty()
-    .withMessage('유저 아이디를 입력해주세요.')
-    .isInt()
-    .withMessage('숫자로 입력해주세요.');
-
 const validateBookId = body('book_id')
     .trim()
     .notEmpty()
@@ -33,7 +26,6 @@ const validateQuantity = body('quantity')
     .custom((value) => value > 0)
     .withMessage('수량은 1 이상이어야 합니다.');
 
-const validatesAddToCart = [validateUserId, validateBookId, validateQuantity, validate];
-const validatesGetCartItems = [validateUserId, validate];
+const validatesAddToCart = [validateBookId, validateQuantity, validate];
 
-module.exports = { validatesAddToCart, validatesGetCartItems };
+module.exports = { validatesAddToCart };

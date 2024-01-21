@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { addToCart, getCartItems, deleteCartItem } = require('../controller/cartController');
 const { validatesAddToCart, validatesGetCartItems } = require('../middleware/cartValidator');
+const verifyToken = require('../middleware/ensureAuthorization');
 
 router.use(express.json());
 /**
@@ -107,9 +108,9 @@ router.use(express.json());
 router
     .route('/')
     // 장바구니 담기
-    .post(validatesAddToCart, addToCart)
+    .post(verifyToken, validatesAddToCart, addToCart)
     // 장바구니 조회, 선택된 장바구니 조회
-    .get(validatesGetCartItems, getCartItems);
+    .get(verifyToken, getCartItems);
 
 /**
  * @swagger
