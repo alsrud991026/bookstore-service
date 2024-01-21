@@ -15,10 +15,16 @@ const verifyToken = (req, res, next) => {
         req.userId = decodedJwt.id;
         next();
     } catch (err) {
-        console.log(err);
-        return res.status(StatusCodes.UNAUTHORIZED).json({
-            message: '로그인이 필요합니다.',
-        });
+        if (err instanceof jwt.TokenExpiredError) {
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+                message: '토큰이 만료되었습니다.',
+            });
+        } else {
+            console.log(err);
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+                message: '로그인이 필요합니다.',
+            });
+        }
     }
 };
 
