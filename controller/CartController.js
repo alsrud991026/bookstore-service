@@ -113,20 +113,22 @@ const getCartItems = async (req, res) => {
 
 const deleteCartItem = async (req, res) => {
     const connection = await conn.getConnection();
-    const { id } = req.params;
+    const bookId = req.params.id;
+    const userId = req.userId;
+    const values = [bookId, userId];
 
-    const sqlDeleteCart = 'delete from cartItems where id = ?';
+    const sqlDeleteCart = 'delete from cartItems where id = ? and user_id = ?';
 
     try {
-        const [rowsDelete] = await connection.query(sqlDeleteCart, id);
+        const [rowsDelete] = await connection.query(sqlDeleteCart, values);
 
         if (rowsDelete.affectedRows > 0) {
             return res.status(StatusCodes.OK).json({
-                message: '장바구니에서 도서가 삭제되었습니다.',
+                message: '장바구니 도서가 삭제되었습니다.',
             });
         } else {
-            return res.status(StatusCodes.NOT_FOUND).json({
-                message: '존재하지 않는 장바구니 도서입니다.',
+            return res.status(StatusCodes.BAD_REQUEST).json({
+                message: '장바구니 도서를 삭제할 수 없습니다.',
             });
         }
     } catch (err) {

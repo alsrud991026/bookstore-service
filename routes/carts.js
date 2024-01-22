@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { addToCart, getCartItems, deleteCartItem } = require('../controller/cartController');
-const { validatesAddToCart, validatesGetCartItems } = require('../middleware/cartValidator');
+const { validatesAddToCart } = require('../middleware/cartValidator');
 const verifyToken = require('../middleware/ensureAuthorization');
 
 router.use(express.json());
@@ -147,6 +147,6 @@ router
  *               message: '장바구니 도서 삭제 중 문제가 발생하였습니다.'
  */
 // 장바구니 도서 삭제
-router.delete('/:id', deleteCartItem);
+router.delete('/:id', verifyToken, deleteCartItem);
 
 module.exports = router;
