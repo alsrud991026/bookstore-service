@@ -1,6 +1,6 @@
 const conn = require('../mariadb');
 const { StatusCodes } = require('http-status-codes');
-const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const getUserByEmail = async (connection, email) => {
@@ -10,12 +10,23 @@ const getUserByEmail = async (connection, email) => {
     return rows.length > 0 ? rows[0] : null;
 };
 
-const hashPassword = (password, salt) => {
+const hashPassword = async (password) => {
+    const saltRounds = 10;
     try {
-        return crypto.pbkdf2Sync(password, salt, 10000, 10, 'sha512').toString('base64');
+        const salt = await bcrypt.genSalt(saltRounds);
+        return await bcrypt.hash(password, salt);
     } catch (err) {
         console.log(err);
         throw new Error('비밀번호 암호화 중 문제가 발생하였습니다.');
+    }
+};
+
+const comparePassword = async (password, hashedPwd) => {
+    try {
+        return await bcrypt.compare(password, hashedPwd);
+    } catch (err) {
+        console.log(err);
+        throw new Error('비밀번호 비교 중 문제가 발생하였습니다.');
     }
 };
 
@@ -24,12 +35,11 @@ const signup = async (req, res) => {
 
     const { email, name, password } = req.body;
 
-    const salt = crypto.randomBytes(10).toString('base64');
-    const hashedPwd = hashPassword(password, salt);
+    const hashedPwd = await hashPassword(password);
 
-    const sqlInsert = 'insert into users (email, name, password, salt) values (?, ?, ?, ?)';
+    const sqlInsert = 'insert into users (email, name, password) values (?, ?, ?)';
 
-    const values = [email, name, hashedPwd, salt];
+    const values = [email, name, hashedPwd];
 
     try {
         const existedEmail = await getUserByEmail(connection, email);
@@ -73,11 +83,12 @@ const signin = async (req, res) => {
             });
         }
 
-        const hashedPwd = hashPassword(password, existedEmail.salt);
+        const isPasswordValid = await comparePassword(password, existedEmail.password);
 
-        if (hashedPwd === existedEmail.password) {
+        if (isPasswordValid) {
             const token = jwt.sign(
                 {
+                    id: existedEmail.id,
                     email: existedEmail.email,
                 },
                 process.env.TOKEN_PRIVATE_KEY,
@@ -141,12 +152,11 @@ const pwdReset = async (req, res) => {
     const connection = await conn.getConnection();
     const { email, password } = req.body;
 
-    const salt = crypto.randomBytes(10).toString('base64');
-    const hashedPwd = hashPassword(password, salt);
+    const hashedPwd = await hashPassword(password);
 
-    const sqlUpdate = 'update users set password = ?, salt = ? where email = ?';
+    const sqlUpdate = 'update users set password = ? where email = ?';
 
-    const values = [hashedPwd, salt, email];
+    const values = [hashedPwd, email];
 
     try {
         const existedEmail = await getUserByEmail(connection, email);
@@ -157,9 +167,9 @@ const pwdReset = async (req, res) => {
             });
         }
 
-        const hashedNewPassword = hashPassword(password, existedEmail.salt);
+        const isPasswordValid = await comparePassword(password, existedEmail.password);
 
-        if (hashedNewPassword === existedEmail.password) {
+        if (isPasswordValid) {
             return res.status(StatusCodes.BAD_REQUEST).json({
                 message: '새 비밀번호는 기존 비밀번호와 달라야 합니다.',
             });

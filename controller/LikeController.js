@@ -2,35 +2,29 @@ const conn = require('../mariadb');
 const { StatusCodes } = require('http-status-codes');
 
 const sqlSelect = `select * from likes where user_id = ? and liked_book_id = ?`;
-const checkExist = `select (select count(*) from users where id = ?) as user_exists, (select count(*) from books where id = ?) as book_exists`;
 
 const checkExistValues = async (connection, values) => {
+    const checkExist = `select (select count(*) from users where id = ?) as user_exists, (select count(*) from books where id = ?) as book_exists`;
     const [rows] = await connection.query(checkExist, values);
 
     return {
-        user_exists: rows[0].user_exists === 1,
-        book_exists: rows[0].book_exists === 1,
+        userExists: rows[0].user_exists === 1,
+        bookExists: rows[0].book_exists === 1,
     };
 };
 
 const addLike = async (req, res) => {
-    const { id } = req.params;
-    const { user_id } = req.body;
+    const bookId = req.params.id;
+    const userId = req.userId;
     const sqlInsert = `insert into likes (user_id, liked_book_id) values (?, ?)`;
-    const values = [user_id, id];
+    const values = [userId, bookId];
 
     const connection = await conn.getConnection();
 
     try {
-        const { user_exists, book_exists } = await checkExistValues(connection, values);
+        const { bookExists } = await checkExistValues(connection, values);
 
-        if (!user_exists) {
-            return res.status(StatusCodes.NOT_FOUND).json({
-                message: '존재하지 않는 유저입니다.',
-            });
-        }
-
-        if (!book_exists) {
+        if (!bookExists) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 message: '존재하지 않는 도서입니다.',
             });
@@ -66,23 +60,23 @@ const addLike = async (req, res) => {
 };
 
 const deleteLike = async (req, res) => {
-    const { id } = req.params;
-    const { user_id } = req.body;
+    const bookId = req.params.id;
+    const userId = req.userId;
     const sqlDelete = `delete from likes where user_id = ? and liked_book_id = ?`;
-    const values = [user_id, id];
+    const values = [userId, bookId];
 
     const connection = await conn.getConnection();
 
     try {
-        const { user_exists, book_exists } = await checkExistValues(connection, values);
+        const { userExists, bookExists } = await checkExistValues(connection, values);
 
-        if (!user_exists) {
+        if (!userExists) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 message: '존재하지 않는 유저입니다.',
             });
         }
 
-        if (!book_exists) {
+        if (!bookExists) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 message: '존재하지 않는 도서입니다.',
             });

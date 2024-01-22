@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { allBooks, bookDetail } = require('../controller/BookController');
-const { validatesGetBooks, validatesBooks } = require('../middleware/BookMiddleware');
+const { allBooks, bookDetail } = require('../controller/bookController');
+const { validatesGetBooks, validatesBooks } = require('../middleware/bookValidator');
+const { verifyTokenOptional } = require('../middleware/ensureAuthorization');
 
 router.use(express.json());
 
@@ -142,6 +143,6 @@ router.get('/', validatesGetBooks, allBooks);
  *               message: 도서 조회 중 에러가 발생하였습니다.
  */
 // 개별 도서 조회
-router.get('/:id', validatesBooks, bookDetail);
+router.get('/:id', verifyTokenOptional, validatesBooks, bookDetail);
 
 module.exports = router;

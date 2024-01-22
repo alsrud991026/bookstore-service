@@ -4,7 +4,8 @@ const { StatusCodes } = require('http-status-codes');
 
 const order = async (req, res) => {
     const connection = await conn.getConnection();
-    const { items, delivery, totalQuantity, totalPrice, userId, firstBookTitle } = camelcaseKeys(req.body);
+    const userId = req.userId;
+    const { items, delivery, totalQuantity, totalPrice, firstBookTitle } = camelcaseKeys(req.body);
     const sqlInsertDelivery = `insert into delivery (address, receiver, contact) values (?, ?, ?)`;
     const valuesDelivery = [delivery.address, delivery.receiver, delivery.contact];
     const sqlInsertOrder = `insert into orders (book_title, total_quantity, total_price, user_id, delivery_id) values (?, ?, ?, ?, ?)`;
@@ -38,12 +39,12 @@ const order = async (req, res) => {
 
 const getOrders = async (req, res) => {
     const connection = await conn.getConnection();
-    const { userId } = camelcaseKeys(req.body);
+    const userId = req.userId;
     const sql = `select * from orders where user_id=?`;
-    const values = [userId];
+    const value = [userId];
 
     try {
-        const [rows] = await connection.query(sql, values);
+        const [rows] = await connection.query(sql, value);
 
         if (rows.length === 0) {
             return res.status(StatusCodes.NOT_FOUND).json({
@@ -64,7 +65,7 @@ const getOrders = async (req, res) => {
 
 const getOrderDetail = async (req, res) => {
     const connection = await conn.getConnection();
-    const { userId } = camelcaseKeys(req.body);
+    const userId = req.userId;
     const orderId = req.params.id;
     const sql = `select * from orders where id=? and user_id=?`;
     const values = [orderId, userId];
@@ -91,6 +92,7 @@ const getOrderDetail = async (req, res) => {
 
 const deleteOrder = async (req, res) => {
     const connection = await conn.getConnection();
+    const userId = req.userId;
     const orderId = req.params.id;
     const sqlSelectOrder = `select * from orders where id=?`;
     const sqlDeleteOrderedBook = `delete from orderedBook where order_id=?`;
@@ -99,9 +101,16 @@ const deleteOrder = async (req, res) => {
 
     try {
         const [rowsOrder] = await connection.query(sqlSelectOrder, orderId);
+
         if (rowsOrder.length === 0) {
             return res.status(StatusCodes.NOT_FOUND).json({
                 message: '주문 내역이 존재하지 않습니다.',
+            });
+        }
+
+        if (rowsOrder[0].user_id !== userId) {
+            return res.status(StatusCodes.UNAUTHORIZED).json({
+                message: '다른 사용자의 주문 내역을 삭제할 수 없습니다.',
             });
         }
 

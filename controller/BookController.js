@@ -1,27 +1,28 @@
 const conn = require('../mariadb');
 const { StatusCodes } = require('http-status-codes');
+const camelcaseKeys = require('camelcase-keys');
 
 const allBooks = async (req, res) => {
     const connection = await conn.getConnection();
-    const { category_id, news, limit, current_page } = req.query;
+    const { categoryId, news, limit, currentPage } = camelcaseKeys(req.query);
     // limit : 페이지 당 도서 수
     // currentPage : 현재 페이지
     // offset : 페이지 당 도서 수 * (현재 페이지 - 1)
 
     const parsedLimit = parseInt(limit);
-    const parsedCurrentPage = parseInt(current_page);
+    const parsedCurrentPage = parseInt(currentPage);
     const offset = parsedLimit * (parsedCurrentPage - 1);
     const values = [];
 
     let sql = 'select *, (select count(*) from likes where books.id=liked_book_id) as likes from books';
 
-    if (category_id && news) {
+    if (categoryId && news) {
         sql +=
             ' left join category on books.category_id = category.category_id where books.category_id = ? and pub_date between date_sub(now(), interval 1 month) and now()';
-        values.push(category_id);
-    } else if (category_id) {
+        values.push(categoryId);
+    } else if (categoryId) {
         sql += ' left join category on books.category_id = category.category_id where books.category_id = ?';
-        values.push(category_id);
+        values.push(categoryId);
     } else if (news) {
         sql += ' where pub_date between date_sub(now(), interval 1 month) and now()';
     }
@@ -33,7 +34,7 @@ const allBooks = async (req, res) => {
         const [rows] = await connection.query(sql, values);
 
         if (rows.length === 0) {
-            const message = category_id ? '해당하는 도서가 없습니다.' : '도서가 없습니다.';
+            const message = categoryId ? '해당하는 도서가 없습니다.' : '도서가 없습니다.';
             return res.status(StatusCodes.NOT_FOUND).json({
                 message: message,
             });
@@ -52,12 +53,22 @@ const allBooks = async (req, res) => {
 
 const bookDetail = async (req, res) => {
     const connection = await conn.getConnection();
-    const { user_id } = req.body;
-    const book_id = req.params.id;
-    const sql = `select *, (select count(*) from likes where books.id=liked_book_id) as likes,
-        (select exists(select * from likes where liked_book_id=? and user_id=?)) as liked from books
+    const userId = req.userId;
+    const bookId = req.params.id;
+    let sql;
+    let values;
+
+    if (userId) {
+        sql = `select *, (select count(*) from likes where books.id=liked_book_id) as likes,
+            (select exists(select * from likes where liked_book_id=? and user_id=?)) as liked from books
+            left join category on books.category_id = category.category_id where books.id=?`;
+        values = [bookId, userId, bookId];
+    } else {
+        sql = `select *, (select count(*) from likes where books.id=liked_book_id) as likes from books 
         left join category on books.category_id = category.category_id where books.id=?`;
-    const values = [book_id, user_id, book_id];
+        values = [bookId];
+    }
+
     try {
         const [rows] = await connection.query(sql, values);
 
