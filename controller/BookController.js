@@ -53,12 +53,22 @@ const allBooks = async (req, res) => {
 
 const bookDetail = async (req, res) => {
     const connection = await conn.getConnection();
-    const { userId } = camelcaseKeys(req.body);
-    const book_id = req.params.id;
-    const sql = `select *, (select count(*) from likes where books.id=liked_book_id) as likes,
-        (select exists(select * from likes where liked_book_id=? and user_id=?)) as liked from books
+    const userId = req.userId;
+    const bookId = req.params.id;
+    let sql;
+    let values;
+
+    if (userId) {
+        sql = `select *, (select count(*) from likes where books.id=liked_book_id) as likes,
+            (select exists(select * from likes where liked_book_id=? and user_id=?)) as liked from books
+            left join category on books.category_id = category.category_id where books.id=?`;
+        values = [bookId, userId, bookId];
+    } else {
+        sql = `select *, (select count(*) from likes where books.id=liked_book_id) as likes from books 
         left join category on books.category_id = category.category_id where books.id=?`;
-    const values = [book_id, userId, book_id];
+        values = [bookId];
+    }
+
     try {
         const [rows] = await connection.query(sql, values);
 
