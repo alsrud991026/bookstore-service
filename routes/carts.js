@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { addToCart, getCartItems, deleteCartItem } = require('../controller/cartController');
 const { validatesAddToCart } = require('../middleware/cartValidator');
-const verifyToken = require('../middleware/ensureAuthorization');
+const { verifyToken } = require('../middleware/ensureAuthorization');
 
 router.use(express.json());
 /**

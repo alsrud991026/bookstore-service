@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { addLike, deleteLike } = require('../controller/likeController');
 const { validatesLike } = require('../middleware/likeValidator');
-const verifyToken = require('../middleware/ensureAuthorization');
+const { verifyToken } = require('../middleware/ensureAuthorization');
 
 router.use(express.json());
 
