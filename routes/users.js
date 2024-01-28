@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { signup, signin, pwdResetRequest, pwdReset } = require('../controller/userController');
+const { signupRequest, signin, pwdResetRequest, pwdReset, signupConfirm } = require('../controller/UserController');
 
 const { validatesSignup, validatesSignin, validatesEmail } = require('../middleware/userValidator');
 
@@ -52,7 +52,8 @@ router.use(express.json());
  *                   example: "회원가입 실패"
  */
 
-router.post('/signup', validatesSignup, signup);
+router.post('/signup/request', signupRequest);
+router.post('/signup', validatesSignup, signupConfirm);
 
 /**
  * @swagger
