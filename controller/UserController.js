@@ -1,3 +1,5 @@
+const { sendAuthCodeEmail } = require('../utils/emailSender');
+const camelcaseKeys = require('camelcase-keys');
 const conn = require('../mariadb');
 const { StatusCodes } = require('http-status-codes');
 const bcrypt = require('bcrypt');
@@ -30,44 +32,27 @@ const comparePassword = async (password, hashedPwd) => {
     }
 };
 
-const signup = async (req, res) => {
+const signupRequest = async (req, res) => {
     const connection = await conn.getConnection();
-
-    const { email, name, password } = req.body;
-
-    const hashedPwd = await hashPassword(password);
-
-    const sqlInsert = 'insert into users (email, name, password) values (?, ?, ?)';
-
-    const values = [email, name, hashedPwd];
+    const { email } = req.body;
 
     try {
-        const existedEmail = await getUserByEmail(connection, email);
-        if (existedEmail) {
-            return res.status(StatusCodes.BAD_REQUEST).json({
-                message: '이미 존재하는 이메일입니다.',
-            });
-        }
-
-        const [rows] = await connection.query(sqlInsert, values);
-
-        if (rows.affectedRows > 0) {
-            res.status(StatusCodes.CREATED).json({
-                message: '회원가입 성공',
-            });
-        } else {
-            res.status(StatusCodes.BAD_REQUEST).json({
-                message: '회원가입 실패',
-            });
-        }
+        await sendAuthCodeEmail(email);
+        return res.status(StatusCodes.OK).json({
+            message: '이메일 발송 성공',
+        });
     } catch (err) {
         console.log(err);
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            message: '회원가입 중 문제가 발생하였습니다.',
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: '이메일 발송 중 문제가 발생하였습니다.',
         });
     } finally {
         connection.release();
     }
+};
+
+const signupConfirm = async (req, res) => {
+    console.log('signupConfirm');
 };
 
 const signin = async (req, res) => {
@@ -197,7 +182,8 @@ const pwdReset = async (req, res) => {
 };
 
 module.exports = {
-    signup,
+    signupRequest,
+    signupConfirm,
     signin,
     pwdResetRequest,
     pwdReset,
