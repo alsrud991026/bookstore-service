@@ -41,7 +41,7 @@ const signupRequest = async (req, res) => {
 
         if (existedEmail) {
             return res.status(StatusCodes.BAD_REQUEST).json({
-                message: '이미 존재하는 이메일입니다.',
+                message: '이미 회원가입한 이메일입니다.',
             });
         }
 
@@ -68,16 +68,24 @@ const signupConfirm = async (req, res) => {
     const hashedPwd = await hashPassword(password);
 
     const sqlInsertUser = 'insert into users (email, name, password) values (?, ?, ?)';
-    const sqlSelectCode = 'select auth_code, expiry from authCode where email = ?';
+    const sqlSelectCode = 'select * from authCode where email = ?';
     const sqlDeleteCode = 'delete from authCode where email = ?';
 
     const values = [email, name, hashedPwd];
 
     try {
-        const [rows] = await connection.query(sqlSelectCode, email);
-        const storedAuthCode = rows[0].auth_code;
+        const existedEmail = await getUserByEmail(connection, email);
 
-        if (rows.length > 0) {
+        if (existedEmail) {
+            return res.status(StatusCodes.BAD_REQUEST).json({
+                message: '이미 회원가입한 이메일입니다.',
+            });
+        }
+
+        const [rowsSelect] = await connection.query(sqlSelectCode, email);
+
+        if (rowsSelect.length > 0) {
+            const storedAuthCode = rowsSelect[0].auth_code;
             if (storedAuthCode !== authCode) {
                 return res.status(StatusCodes.BAD_REQUEST).json({
                     message: '인증 코드가 일치하지 않습니다.',
@@ -93,12 +101,18 @@ const signupConfirm = async (req, res) => {
                 });
             }
 
-            await connection.query(sqlInsertUser, values);
-            await connection.query(sqlDeleteCode, email);
+            const [rowsInsert] = await connection.query(sqlInsertUser, values);
 
-            return res.status(StatusCodes.CREATED).json({
-                message: '회원가입 성공',
-            });
+            if (rowsInsert.affectedRows > 0) {
+                await connection.query(sqlDeleteCode, email);
+                res.status(StatusCodes.CREATED).json({
+                    message: '회원가입 성공',
+                });
+            } else {
+                res.status(StatusCodes.BAD_REQUEST).json({
+                    message: '회원가입 실패',
+                });
+            }
         } else {
             return res.status(StatusCodes.BAD_REQUEST).json({
                 message: '먼저 이메일 인증을 진행해주세요.',
@@ -170,6 +184,8 @@ const pwdResetRequest = async (req, res) => {
     const connection = await conn.getConnection();
 
     try {
+        const existedEmail = await getUserByEmail(connection, email);
+
         if (!existedEmail) {
             return res.status(StatusCodes.UNAUTHORIZED).json({
                 message: '해당하는 이메일이 존재하지 않습니다.',
@@ -194,11 +210,13 @@ const pwdResetRequest = async (req, res) => {
 
 const pwdReset = async (req, res) => {
     const connection = await conn.getConnection();
-    const { email, password } = req.body;
+    const { email, password, authCode } = camelcaseKeys(req.body);
 
     const hashedPwd = await hashPassword(password);
 
     const sqlUpdate = 'update users set password = ? where email = ?';
+    const sqlSelectCode = 'select * from authCode where email = ?';
+    const sqlDeleteCode = 'delete from authCode where email = ?';
 
     const values = [hashedPwd, email];
 
@@ -211,23 +229,51 @@ const pwdReset = async (req, res) => {
             });
         }
 
-        const isPasswordValid = await comparePassword(password, existedEmail.password);
+        const [rowsSelect] = await connection.query(sqlSelectCode, email);
 
-        if (isPasswordValid) {
-            return res.status(StatusCodes.BAD_REQUEST).json({
-                message: '새 비밀번호는 기존 비밀번호와 달라야 합니다.',
-            });
-        }
+        console.log(rowsSelect);
 
-        const [rows] = await connection.query(sqlUpdate, values);
+        if (rowsSelect.length > 0) {
+            const storedAuthCode = rowsSelect[0].auth_code;
 
-        if (rows.affectedRows > 0) {
-            res.status(StatusCodes.OK).json({
-                message: '비밀번호 초기화 성공',
-            });
+            if (storedAuthCode !== authCode) {
+                return res.status(StatusCodes.BAD_REQUEST).json({
+                    message: '인증 코드가 일치하지 않습니다.',
+                });
+            }
+
+            const currentTime = Date.now();
+
+            if (currentTime > rowsSelect[0].expiry) {
+                await sendAuthCodeEmail(email);
+                return res.status(StatusCodes.BAD_REQUEST).json({
+                    message: '인증 코드가 만료되었습니다. 새로운 인증 코드를 전송하였습니다.',
+                });
+            }
+
+            const isPasswordValid = await comparePassword(password, existedEmail.password);
+
+            if (isPasswordValid) {
+                return res.status(StatusCodes.BAD_REQUEST).json({
+                    message: '새 비밀번호는 기존 비밀번호와 달라야 합니다.',
+                });
+            }
+
+            const [rowsUpdate] = await connection.query(sqlUpdate, values);
+
+            if (rowsUpdate.affectedRows > 0) {
+                await connection.query(sqlDeleteCode, email);
+                res.status(StatusCodes.OK).json({
+                    message: '비밀번호 초기화 성공',
+                });
+            } else {
+                res.status(StatusCodes.BAD_REQUEST).json({
+                    message: '비밀번호 초기화 실패',
+                });
+            }
         } else {
-            res.status(StatusCodes.BAD_REQUEST).json({
-                message: '비밀번호 초기화 실패',
+            return res.status(StatusCodes.BAD_REQUEST).json({
+                message: '먼저 이메일 인증을 진행해주세요.',
             });
         }
     } catch (err) {
