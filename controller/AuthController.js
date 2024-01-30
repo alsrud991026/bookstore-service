@@ -75,9 +75,10 @@ const signupConfirm = async (req, res) => {
 
     try {
         const [rows] = await connection.query(sqlSelectCode, email);
+        const storedAuthCode = rows[0].auth_code;
 
         if (rows.length > 0) {
-            if (rows[0].auth_code !== authCode) {
+            if (storedAuthCode !== authCode) {
                 return res.status(StatusCodes.BAD_REQUEST).json({
                     message: '인증 코드가 일치하지 않습니다.',
                 });
@@ -169,13 +170,13 @@ const pwdResetRequest = async (req, res) => {
     const connection = await conn.getConnection();
 
     try {
-        const existedEmail = await getUserByEmail(connection, email);
-
         if (!existedEmail) {
             return res.status(StatusCodes.UNAUTHORIZED).json({
                 message: '해당하는 이메일이 존재하지 않습니다.',
             });
         } else {
+            await sendAuthCodeEmail(email);
+
             return res.status(StatusCodes.OK).json({
                 message: '이메일 발송 성공',
                 email: email,
