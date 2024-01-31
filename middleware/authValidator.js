@@ -35,8 +35,16 @@ const validateName = body('name')
     .isString()
     .withMessage('문자열로 입력해주세요.');
 
-const validatesSignup = [validateEmail, validatePwd, validateName, validate];
+const validateAuthCode = body('auth_code')
+    .trim()
+    .notEmpty()
+    .withMessage('인증 코드를 입력하지 않았습니다.')
+    .isNumeric()
+    .withMessage('숫자로 입력해주세요.');
+
+const validatesSignup = [validateEmail, validatePwd, validateName, validateAuthCode, validate];
 const validatesSignin = [validateEmail, validatePwd, validate];
 const validatesEmail = [validateEmail, validate];
+const validatesPwd = [validateEmail, validatePwd, validateAuthCode, validate];
 
-module.exports = { validatesSignup, validatesSignin, validatesEmail };
+module.exports = { validatesSignup, validatesSignin, validatesEmail, validatesPwd };

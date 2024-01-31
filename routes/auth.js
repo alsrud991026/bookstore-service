@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { signupRequest, signin, pwdResetRequest, pwdReset, signupConfirm } = require('../controller/UserController');
+const { signupRequest, signin, pwdResetRequest, pwdReset, signupConfirm } = require('../controller/AuthController');
 
-const { validatesSignup, validatesSignin, validatesEmail } = require('../middleware/userValidator');
+const { validatesSignup, validatesSignin, validatesEmail, validatesPwd } = require('../middleware/authValidator');
 
 router.use(express.json());
 
@@ -52,7 +52,7 @@ router.use(express.json());
  *                   example: "회원가입 실패"
  */
 
-router.post('/signup/request', signupRequest);
+router.post('/signup/request', validatesEmail, signupRequest);
 router.post('/signup', validatesSignup, signupConfirm);
 
 /**
@@ -198,6 +198,6 @@ router
     // 비밀번호 초기화 요청
     .post(validatesEmail, pwdResetRequest)
     // 비밀번호 초기화
-    .put(validatesSignin, pwdReset);
+    .put(validatesPwd, pwdReset);
 
 module.exports = router;
